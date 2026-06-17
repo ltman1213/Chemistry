@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKDSE 化學科測驗：金屬、酸和鹼</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #2980b9;
+            --bg-color: #f5f7fa;
+            --correct-color: #27ae60;
+            --wrong-color: #c0392b;
+        }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: #333; line-height: 1.7; margin: 0; padding: 20px; }
+        .container { max-width: 850px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1 { text-align: center; color: var(--primary-color); margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 0.95em; }
+        
+        /* 學生資料欄 */
+        .student-info { background-color: #ecf0f1; padding: 20px; border-radius: 6px; margin-bottom: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .student-info label { font-weight: bold; color: var(--secondary-color); }
+        .student-info input { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        
+        /* 課題分流標題 */
+        .topic-header { background: var(--primary-color); color: #fff; padding: 10px 15px; border-radius: 4px; margin-top: 40px; margin-bottom: 20px; font-size: 1.15em; }
+        
+        /* 題目卡片 */
+        .quiz-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-bottom: 20px; transition: border-color 0.2s; }
+        .quiz-item:hover { border-color: #cbd5e1; }
+        .question-text { font-weight: 600; margin-bottom: 12px; color: #1e293b; }
+        .options-list { list-style: none; padding: 0; margin: 0; }
+        .options-list li { margin-bottom: 8px; }
+        .options-list label { display: block; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        .options-list label:hover { background: #f1f5f9; }
+        .options-list input { margin-right: 10px; }
+        
+        /* AI 題解與回饋 */
+        .feedback-box { display: none; margin-top: 15px; padding: 12px 15px; border-radius: 4px; font-size: 0.92em; }
+        .feedback-box.correct-style { background-color: #e8f5e9; border-left: 5px solid var(--correct-color); color: #1b5e20; }
+        .feedback-box.wrong-style { background-color: #ffebee; border-left: 5px solid var(--wrong-color); color: #b71c1c; }
+        .ai-title { font-weight: bold; color: #333; margin-top: 5px; display: block; }
+        
+        /* 按鈕與分數顯示 */
+        .btn-submit { display: block; width: 100%; background: var(--accent-color); color: #fff; border: none; padding: 15px; border-radius: 5px; font-size: 1.1em; font-weight: bold; cursor: pointer; margin-top: 30px; transition: background 0.2s; }
+        .btn-submit:hover { background: #1e3a8a; }
+        .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
+        .result-panel { display: none; background: #e0f2fe; border: 2px solid #0284c7; padding: 20px; border-radius: 6px; text-align: center; margin-top: 20px; }
+        .score-num { font-size: 2em; font-weight: bold; color: #0369a1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>化學科單元測驗</h1>
+    <div class="subtitle">涵蓋課題：金屬、酸和鹼 (共20題，總分100分)</div>
+
+    <form id="quizForm">
+        <input type="hidden" name="access_key" value="d1f46871-dfc6-453c-9da1-1d7e4a4f4df2">
+        <input type="hidden" name="subject" value="新測驗提交：金屬與酸鹼單元測驗">
+        <input type="hidden" name="from_name" value="啟啟中學化學網上評估系統">
+
+        <div class="student-info">
+            <div>
+                <label for="stdName">學生姓名</label>
+                <input type="text" id="stdName" name="學生姓名" required placeholder="請輸入中文或英文全名">
+            </div>
+            <div>
+                <label for="stdClass">班別</label>
+                <input type="text" id="stdClass" name="班別" required placeholder="例如：5A">
+            </div>
+            <div>
+                <label for="stdNum">學號</label>
+                <input type="text" id="stdNum" name="學號" required placeholder="例如：12">
+            </div>
+        </div>
+
+        <input type="hidden" name="總得分" id="hiddenScore">
+        <input type="hidden" name="答題對照及AI題解摘要" id="hiddenReport">
+
+        <div id="questionsContainer"></div>
+
+        <div id="resultPanel" class="result-panel">
+            <p>測驗已完成！</p>
+            <div class="score-num" id="scoreDisplay">0 / 100</div>
+            <p style="color: #0369a1; font-size: 0.9em;">詳細題解已在下方解鎖，成績報告亦已自動同步傳送予林老師 (ltman@keiheep.edu.hk)。</p>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-submit">完成並提交測驗</button>
+    </form>
+</div>
+
+<script>
+// 嚴格符合 HKDSE 化學科課程要求的 20 條 MC 題庫
+const quizData = [
+    // === 金屬部分 (1-10) ===
+    {
+        id: 1, topic: "金屬",
+        q: "1. 下列哪種方法最適宜用來從氧化鋁 (Al2O3) 中提取鋁金屬？",
+        options: ["將氧化鋁與碳一同加熱", "利用電解熔融狀態的氧化鋁", "將氧化鋁與氫氣一同加熱", "直接強熱氧化鋁"],
+        correct: 1,
+        ai: "鋁在電化學系列（ECS）中位置較高，性質非常活潑，其氧化物十分穩定，不能用碳或氫氣還原。必須利用電解熔融礦石的方法來提取。"
+    },
+    {
+        id: 2, topic: "金屬",
+        q: "2. 當把一小塊鈉金屬加入盛有蒸餾水並含有幾滴酚酞的燒杯中，下列哪項觀測結果是**錯誤**的？",
+        options: ["鈉熔化成一銀色小球並游動", "發出嘶嘶聲響", "溶液由無色變成藍色", "反應釋放出可燃氣體"],
+        correct: 2,
+        ai: "鈉與水激烈反應生成氫氧化鈉（強鹼）和氫氣。鹼性溶液會令酚酞指示劑由無色變成**粉紅色**，而非藍色。"
+    },
+    {
+        id: 3, topic: "金屬",
+        q: "3. 下列哪一組物質在常溫常壓下**不會**發生化學反應？",
+        options: ["鋅粒與稀鹽酸", "銅片與氧化鎂固體加熱", "鐵釘與硝酸銀溶液", "鈣金屬與冷水"],
+        correct: 1,
+        ai: "銅的反應性比鎂低，因此銅不能從氧化鎂中置換出鎂。A會產生氫氣；C中鐵比銀活潑能置換出銀；D鈣與冷水反應生成氫氧化鈣。"
+    },
+    {
+        id: 4, topic: "金屬",
+        q: "4. 將等質量的四種金屬分別放入足量的稀硫酸中，哪一種金屬產生的氫氣速率最快？",
+        options: ["鐵 (Fe)", "鋅 (Zn)", "鎂 (Mg)", "鉛 (Pb)"],
+        correct: 2,
+        ai: "根據金屬活潑性順序：Mg > Zn > Fe > Pb。鎂最活潑，與稀酸反應的速率最快（氣泡釋放最劇烈）。"
+    },
+    {
+        id: 5, topic: "金屬",
+        q: "5. 在鐵製閘門上連接一塊鋅片可以防止鐵鏽蝕。這種防鏽方法稱為什麼？",
+        options: ["合金控制法", "犧牲性保護法", "陰極電鍍保護法", "屏障保護法"],
+        correct: 1,
+        ai: "鋅比鐵更活潑（更容易失去電子）。當受到環境腐蝕時，鋅會代替鐵首先被氧化（作犧牲），故稱犧牲性保護法。"
+    },
+    {
+        id: 6, topic: "金屬",
+        q: "6. 有一種未知金屬 X。X 的氧化物與碳同熱沒有反應，但 X 的硝酸鹽固體受強熱時會分解產生二氧化氮、氧氣和 X 的氧化物。金屬 X 最有可能是：",
+        options: ["銀 (Ag)", "銅 (Cu)", "鎂 (Mg)", "鉀 (K)"],
+        correct: 2,
+        ai: "氧化物不能被碳還原，說明 X 在 ECS 中位置高於鋅。而鉀的硝酸鹽受熱只會生成亞硝酸鹽和氧氣。只有處於 Mg 至 Cu 之間的金屬（如鎂）之硝酸鹽會受熱分解為氧化物、NO2 和 O2。"
+    },
+    {
+        id: 7, topic: "金屬",
+        q: "7. 下列關於金屬性質的敘述，哪項正確？",
+        options: ["所有金屬都是銀白色的固體", "金屬具有良好的導電性是由於含有可自由移動的離子", "金屬的延展性源於金屬鍵中原子層間可互相滑動而不斷裂", "一般而言，合金的熔點比其純金屬成分高"],
+        correct: 2,
+        ai: "金屬受力時，原子層可以互相滑動，而外圍的「電子海」仍能保持金屬鍵，故具延展性。A中銅是紅棕色、汞是液體；B導電是由於**自由電子**而非離子；D合金熔點通常比純金屬低。"
+    },
+    {
+        id: 8, topic: "金屬",
+        q: "8. 1摩爾的下列金屬與足量稀鹽酸完全反應，哪一種產生的氫氣摩爾數最多？",
+        options: ["鋁 (Al)", "鎂 (Mg)", "鈉 (Na)", "鋅 (Zn)"],
+        correct: 0,
+        ai: "反應中，1莫耳 Al 釋放 3 莫耳電子（生成 1.5 莫耳 H2）；Mg 和 Zn 釋放 2 莫耳電子（生成 1 莫耳 H2）；Na 釋放 1 莫耳電子（生成 0.5 莫耳 H2）。故鋁最多。"
+    },
+    {
+        id: 9, topic: "金屬",
+        q: "9. 金屬氧化物在高溫下與一氧化碳 (CO) 反應，下列哪一項反應屬於此類？",
+        options: ["高爐中煉鐵的反應", "從高嶺土中提取鋁", "加熱氧化汞", "銅與濃硫酸反應"],
+        correct: 0,
+        ai: "在高爐（熔鐵爐）中，Fe2O3 與 CO 反應：Fe2O3 + 3CO → 2Fe + 3CO2。一氧化碳充當還原劑將鐵提取出來。"
+    },
+    {
+        id: 10, topic: "金屬",
+        q: "10. 當將鐵釘放入藍色的硫酸銅(II)溶液中，一段時間後會觀察到什麼現象？",
+        options: ["溶液藍色變深", "鐵釘表面有銀白色固體析出", "鐵釘表面有紅棕色固體沉積", "沒有任何可見變化"],
+        correct: 2,
+        ai: "反應為 Fe + Cu^2+ → Fe^2+ + Cu。鐵置換出銅，銅金屬為紅棕色固體沉積在鐵釘表面；同時藍色的 Cu^2+ 減少，溶液藍色會變淺。"
+    },
+    
+    // === 酸和鹼部分 (11-20) ===
+    {
+        id: 11, topic: "酸和鹼",
+        q: "11. 下列哪一種物質在水溶液中完全電離（完全離解）？",
+        options: ["乙酸 (CH3COOH)", "氨 (NH3)", "碳酸 (H2CO3)", "硝酸 (HNO3)"],
+        correct: 3,
+        ai: "硝酸 (HNO3) 是強酸，在水溶液中會完全電離。而乙酸和碳酸是弱酸，氨是弱鹼，在水中均只能部分電離。"
+    },
+    {
+        id: 12, topic: "酸和鹼",
+        q: "12. 在 298 K 時，某一水溶液的 pH 值為 3.0。該溶液中的氫氧根離子 [OH^-(aq)] 濃度是多少？",
+        options: ["1.0 x 10^-3 M", "1.0 x 10^-11 M", "1.0 x 10^-7 M", "3.0 M"],
+        correct: 1,
+        ai: "在 298 K 時，pH + pOH = 14。已知 pH = 3，則 pOH = 11。所以 [OH^-] = 10^-pOH = 1.0 x 10^-11 M。"
+    },
+    {
+        id: 13, topic: "酸和鹼",
+        q: "13. 下列哪項實驗操作可以安全地稀釋濃硫酸？",
+        options: ["將大量水快速倒入濃硫酸中", "將濃硫酸沿玻璃棒緩慢倒入水中，並不斷攪拌", "把濃硫酸和水同時倒入空燒杯中", "加熱濃硫酸後再加水"],
+        correct: 1,
+        ai: "濃硫酸稀釋時會釋放巨大熱量。必須「**酸入水、緩緩加、常攪拌**」，利用水的高比熱容量吸收熱量，否則酸液會受熱沸騰並向外濺出造成危險。"
+    },
+    {
+        id: 14, topic: "酸和鹼",
+        q: "14. 25.0 cm^3 的 0.10 M NaOH(aq) 恰好能與 12.5 cm^3 的某酸 HnX(aq) 完全中和。該酸的元數 (n) 是多少？",
+        options: ["一元酸 (n=1)", "二元酸 (n=2)", "三元酸 (n=3)", "四元酸 (n=4)"],
+        correct: 1,
+        ai: "NaOH 的摩爾數 = 0.025 x 0.1 = 0.0025 mol。酸的摩爾數 = 0.0125 x 0.1 = 0.00125 mol。酸與鹼的 反應摩爾比 = 1 : 2，說明 1 莫耳酸能提供 2 莫耳 H^+，故為二元酸。"
+    },
+    {
+        id: 15, topic: "酸和鹼",
+        q: "15. 下列哪種試劑最適合用來辨別固體碳酸鈉 (Na2CO3) 和固體硫酸鈉 (Na2SO4)？",
+        options: ["稀硝酸", "氫氧化鈉溶液", "酚酞指示劑", "石蕊試紙"],
+        correct: 0,
+        ai: "加入稀硝酸時，碳酸鈉會與酸反應產生二氧化碳氣體（有氣泡冒出），而硫酸鈉與酸無反應。酚酞及石蕊無法在乾燥固體中有效辨別。"
+    },
+    {
+        id: 16, topic: "酸和鹼",
+        q: "16. 弱酸（如乙酸）的導電性比同濃度的強酸（如鹽酸）低，主要是因為：",
+        options: ["弱酸分子的體積較大", "弱酸溶液中可自由移動的離子濃度較低", "弱酸不能與鹼反應", "弱酸中不含氫離子"],
+        correct: 1,
+        ai: "溶液的導電性取決於「可自由移動的離子濃度」。弱酸只有少部分電離，因此在相同摩爾濃度下，弱酸產生的 H^+ 及陰離子總濃度遠低於強酸。"
+    },
+    {
+        id: 17, topic: "酸和鹼",
+        q: "17. 將 10 cm^3 的 1M HCl(aq) 加水稀釋至 1000 cm^3，稀釋後溶液的 pH 值改變了多少？",
+        options: ["上升了 2 單位", "下降了 2 單位", "上升了 1 單位", "不變"],
+        correct: 0,
+        ai: "初始 [H^+] = 1 M (pH = 0)。體積由 10 增至 1000 cm^3（擴大100倍），濃度被稀釋至原來的 1/100，即新 [H^+] = 0.01 M。新 pH = -log(0.01) = 2。因此 pH 上升了 2 個單位。"
+    },
+    {
+        id: 18, topic: "酸和鹼",
+        q: "18. 用標準標準氫氧化鈉溶液滴定未知濃度的乙酸時，最常選用下列哪種指示劑來找出滴定終點？",
+        options: ["甲基橙", "石蕊溶液", "酚酞", "普遍指示劑"],
+        correct: 2,
+        ai: "強鹼與弱酸中和時，終點生成的鹽（乙酸鈉）會發生水解，使終點溶液呈微鹼性（pH 介乎 8-10）。酚酞的變色範圍為 pH 8.3-10.0，最為適合。絕不能用普遍指示劑（顏色轉變太過漸變）。"
+    },
+    {
+        id: 19, topic: "酸和鹼",
+        q: "19. 下列哪一種氧化物屬於兩性氧化物（能同時與強酸和強鹼反應）？",
+        options: ["氧化鈣 (CaO)", "氧化鋁 (Al2O3)", "二氧化碳 (CO2)", "氧化鐵(III) (Fe2O3)"],
+        correct: 1,
+        ai: "DSE 必背兩性氧化物例子是氧化鋁 (Al2O3) 和氧化鋅 (ZnO)。它們既能溶於酸生成鋁鹽，也能溶於強鹼生成鋁酸鹽。CaO、Fe2O3 為鹼性氧化物，CO2 為酸性氧化物。"
+    },
+    {
+        id: 20, topic: "酸和鹼",
+        q: "20. 下列哪項關於鹽類製備的配搭是**正確**的？",
+        options: [
+            "硫酸鋇 (BaSO4)：將金屬鋇加入稀硫酸中",
+            "氯化銀 (AgCl)：將硝酸銀溶液與稀鹽酸混合 (沉澱法)",
+            "氯化鈉 (NaCl)：將金屬鈉直接放入氯氣中燃燒後溶於水",
+            "硝酸銅(II) (Cu(NO3)2)：將銅片放入稀鹽酸中再加硝酸"
+        ],
+        correct: 1,
+        ai: "氯化銀 (AgCl) 是不溶於水的鹽，最適合用可溶的銀鹽（AgNO3）與可溶的氯化物（HCl）通過**沉澱法**製備。A中硫酸鋇不溶，會覆蓋在鋇表面阻止反應；C操作極度危險不適合作常規製備。"
+    }
+];
+
+// 網頁動態初始化題目
+const container = document.getElementById('questionsContainer');
+let currentTopic = "";
+
+quizData.forEach((item, index) => {
+    // 插入章節標題
+    if (item.topic !== currentTopic) {
+        currentTopic = item.topic;
+        const topicHeader = document.createElement('div');
+        topicHeader.className = 'topic-header';
+        topicHeader.innerText = `單元：${currentTopic}`;
+        container.appendChild(topicHeader);
+    }
+
+    // 建立題目卡片
+    const qCard = document.createElement('div');
+    qCard.className = 'quiz-item';
+    
+    let optionsHTML = item.options.map((opt, i) => {
+        const optionLetter = String.fromCharCode(65 + i); // A, B, C, D
+        return `<li>
+            <label>
+                <input type="radio" name="q${index}" value="${i}" required>
+                <strong>${optionLetter}.</strong> ${opt}
+            </label>
+        </li>`;
+    }).join('');
+
+    qCard.innerHTML = `
+        <div class="question-text">${item.q}</div>
+        <ul class="options-list">${optionsHTML}</ul>
+        <div id="feedback-${index}" class="feedback-box"></div>
+    `;
+    container.appendChild(qCard);
+});
+
+// 表單提交與數據打包處理
+const form = document.getElementById('quizForm');
+form.addEventListener('submit', function(e) {
+    e.preventDefault(); // 阻止表單原生跳轉
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerText = "正在傳送成績報告予老師...";
+
+    let totalScore = 0;
+    let reportSummary = ""; // 用於傳送給老師的純文字摘要
+
+    quizData.forEach((item, index) => {
+        const selectedRadio = document.querySelector(`input[name="q${index}"]:checked`);
+        const userChoice = parseInt(selectedRadio.value);
+        const isCorrect = (userChoice === item.correct);
+        
+        if (isCorrect) {
+            totalScore += 5; // 每題5分
+        }
+
+        const userLetter = String.fromCharCode(65 + userChoice);
+        const correctLetter = String.fromCharCode(65 + item.correct);
+
+        // 前端顯示「AI題解」回饋
+        const feedbackBox = document.getElementById(`feedback-${index}`);
+        feedbackBox.style.display = 'block';
+        if (isCorrect) {
+            feedbackBox.className = "feedback-box correct-style";
+            feedbackBox.innerHTML = `<span><strong>得分 (5/5)</strong> - 答對了！</span>`;
+        } else {
+            feedbackBox.className = "feedback-box wrong-style";
+            feedbackBox.innerHTML = `<span><strong>得分 (0/5)</strong> - 答錯了。你的答案: ${userLetter}，正確答案: ${correctLetter}</span>`;
+        }
+        feedbackBox.innerHTML += `<span class="ai-title">🤖 AI 概念題解：</span>${item.ai}`;
+
+        // 串接老師的 Email 報告內容
+        reportSummary += `題號: ${item.id} (${item.topic})\n`;
+        reportSummary += `學生答案: [${userLetter}] | 正確答案: [${correctLetter}] -> ${isCorrect ? '【正確】' : '【錯誤】'}\n`;
+        reportSummary += `AI題解摘要: ${item.ai}\n`;
+        reportSummary += `--------------------------------------------------\n`;
+    });
+
+    // 將動態數據塞入隱藏欄位，以便 Web3Forms 收集
+    document.getElementById('hiddenScore').value = `${totalScore} / 100 分`;
+    document.getElementById('hiddenReport').value = reportSummary;
+
+    // 更新前端畫面的分數
+    document.getElementById('scoreDisplay').innerText = `${totalScore} / 100`;
+    document.getElementById('resultPanel').style.display = 'block';
+    submitBtn.innerText = "測驗已完成並成功提交";
+
+    // 使用 AJAX 將數據發送到 Web3Forms
+    const formData = new FormData(form);
+    
+    fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if(response.ok) {
+            alert("成績報告已成功發送至林老師的電子郵箱！");
+            window.scrollTo({ top: document.getElementById('resultPanel').offsetTop, behavior: 'smooth' });
+        } else {
+            alert("網頁評估完成，但在發送電郵時出現微小錯誤，請告知老師你的分數。");
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("連線失敗，請檢查網絡，並手動向老師申報分數。");
+    });
+});
+</script>
+
+</body>
+</html>
